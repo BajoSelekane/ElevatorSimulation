@@ -4,7 +4,10 @@ using System.Text;
 
 namespace ElevatorSimulation.Domain.Enums
 {
-    internal class ElevatorDirection
+    public enum ElevatorDirection
     {
+        Idle,
+        Up,
+        Down
     }
 }

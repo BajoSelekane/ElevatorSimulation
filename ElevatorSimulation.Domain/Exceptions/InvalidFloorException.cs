@@ -4,7 +4,16 @@ using System.Text;
 
 namespace ElevatorSimulation.Domain.Exceptions
 {
-    internal class InvalidFloorException
+    public class InvalidFloorException : DomainException
     {
+        public int InvalidFloor { get; }
+
+        public InvalidFloorException(string message) : base(message) { }
+
+        public InvalidFloorException(string message, int invalidFloor)
+            : base(message)
+        {
+            InvalidFloor = invalidFloor;
+        }
     }
 }

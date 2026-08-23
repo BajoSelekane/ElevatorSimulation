@@ -6,21 +6,8 @@
         Moving,
         DoorsOpen,
         DoorsClosing,
-        OutOfService
+        OutOfService,
+        Maintenance
     }
-
-    public enum ElevatorDirection
-    {
-        Idle,
-        Up,
-        Down
-    }
-
-    public enum ElevatorType
-    {
-        Standard,
-        HighSpeed,
-        Freight,
-        Glass
-    }
+  
 }

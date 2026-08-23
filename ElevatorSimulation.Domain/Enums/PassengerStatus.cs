@@ -4,11 +4,12 @@ using System.Text;
 
 namespace ElevatorSimulation.Domain.Enums
 {
-    public enum ElevatorType
+    public enum PassengerStatus
     {
-        Standard,
-        HighSpeed,
-        Freight,
-        Glass
+        Waiting,
+        Boarding,
+        Riding,
+        Alighting,
+        Completed
     }
 }

@@ -4,7 +4,16 @@ using System.Text;
 
 namespace ElevatorSimulation.Domain.Exceptions
 {
-    internal class ElevatorNotFoundException
+    public class ElevatorNotFoundException : DomainException
     {
+        public int ElevatorId { get; }
+
+        public ElevatorNotFoundException(string message) : base(message) { }
+
+        public ElevatorNotFoundException(string message, int elevatorId)
+            : base(message)
+        {
+            ElevatorId = elevatorId;
+        }
     }
 }
