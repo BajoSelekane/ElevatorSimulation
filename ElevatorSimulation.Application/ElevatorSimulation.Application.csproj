@@ -10,7 +10,10 @@
     <Folder Include="DTOs\" />
     <Folder Include="Interfaces\" />
     <Folder Include="Validators\" />
-    <Folder Include="Services\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ElevatorSimulation.Domain\ElevatorSimulation.Domain.csproj" />
   </ItemGroup>
 
 </Project>
