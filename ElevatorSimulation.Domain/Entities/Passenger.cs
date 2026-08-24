@@ -10,6 +10,7 @@ namespace ElevatorSimulation.Domain.Entities
         public double Weight { get; set; }
         public bool IsWaiting { get; set; }
         public PassengerStatus Status { get; set; }
+        public object CreatedAt { get; set; }
 
         public Passenger(int id, int currentFloor, int destinationFloor, double weight = 70)
         {

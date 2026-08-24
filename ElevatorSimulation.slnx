@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="ElevatorSimulation.Application.Tests/ElevatorSimulation.Application.Tests.csproj" />
     <Project Path="ElevatorSimulation.Application/ElevatorSimulation.Application.csproj" />
     <Project Path="ElevatorSimulation.ConsoleUI/ElevatorSimulation.ConsoleUI.csproj" />
+    <Project Path="ElevatorSimulation.Domain.Tests/ElevatorSimulation.Domain.Tests.csproj" />
     <Project Path="ElevatorSimulation.Domain/ElevatorSimulation.Domain.csproj" />
     <Project Path="ElevatorSimulation.Infrastructure/ElevatorSimulation.Infrastructure.csproj" />
   </Folder>
