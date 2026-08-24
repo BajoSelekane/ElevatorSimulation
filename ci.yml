@@ -1,0 +1,331 @@
+name: Elevator Simulation CI
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Full history for better coverage reporting
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Cache NuGet packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+    
+    - name: Restore dependencies
+      run: dotnet restore ElevatorSimulation.sln
+    
+    - name: Build solution
+      run: dotnet build ElevatorSimulation.sln --configuration Release --no-restore
+    
+    - name: Run tests with coverage
+      run: |
+        dotnet test ElevatorSimulation.sln \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --settings coverlet.runsettings \
+          --results-directory ./TestResults
+    
+    - name: Merge coverage reports
+      run: |
+        dotnet tool install --global dotnet-reportgenerator-globaltool
+        reportgenerator \
+          -reports:./TestResults/**/coverage.cobertura.xml \
+          -targetdir:./CoverageReport \
+          -reporttypes:HtmlInline_AzurePipelines;Cobertura
+    
+    - name: Check code coverage threshold
+      id: coverage_check
+      run: |
+        COVERAGE=$(grep -oP 'LineRate="\K[0-9.]+' ./CoverageReport/Cobertura.xml | head -1)
+        COVERAGE_PERCENT=$(echo "$COVERAGE * 100" | bc | cut -d. -f1)
+        echo "Current coverage: $COVERAGE_PERCENT%"
+        echo "coverage=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
+        
+        if [ $COVERAGE_PERCENT -lt 90 ]; then
+          echo "❌ Code coverage is below 90% threshold (Current: ${COVERAGE_PERCENT}%)"
+          exit 1
+        else
+          echo "✅ Code coverage meets the 90% threshold (Current: ${COVERAGE_PERCENT}%)"
+        fi
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: ./CoverageReport
+        retention-days: 30
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: ./TestResults
+        retention-days: 30
+
+  quality-checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Run static code analysis
+      run: |
+        dotnet tool install --global dotnet-format
+        dotnet format ElevatorSimulation.sln --verify-no-changes
+    
+    - name: Run code analysis with Roslyn analyzers
+      run: |
+        dotnet build ElevatorSimulation.sln --configuration Release /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true
+    
+    - name: Check for vulnerabilities
+      run: |
+        dotnet tool install --global dotnet-outdated-tool
+        dotnet list ElevatorSimulation.sln package --outdated --include-transitive
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Security Scan
+      uses: security-code-scan/security-code-scan@main
+      with:
+        path: .
+    
+    - name: Upload security scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: security-code-scan.sarif
+
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Install SonarCloud scanners
+      run: |
+        dotnet tool install --global dotnet-sonarscanner
+    
+    - name: Begin SonarCloud analysis
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        dotnet sonarscanner begin \
+          /k:"elevator-simulation" \
+          /o:"elevator-simulation-org" \
+          /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+          /d:sonar.host.url="https://sonarcloud.io" \
+          /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
+          /d:sonar.coverage.exclusions="**/Tests/**,**/*.Tests.*,**/*.Integration.Tests.*" \
+          /d:sonar.exclusions="**/Tests/**,**/*.Tests.*,**/*.Integration.Tests.*"
+    
+    - name: Build and test
+      run: |
+        dotnet build ElevatorSimulation.sln --configuration Release --no-restore
+        dotnet test ElevatorSimulation.sln \
+          --configuration Release \
+          --no-build \
+          --collect:"XPlat Code Coverage" \
+          --settings coverlet.runsettings \
+          --results-directory ./TestResults
+    
+    - name: End SonarCloud analysis
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Run benchmarks
+      run: |
+        dotnet run --project ./tests/ElevatorSimulation.Benchmarks/ElevatorSimulation.Benchmarks.csproj \
+          --configuration Release \
+          --filter "*" \
+          --exporters json
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: ./BenchmarkDotNet.Artifacts
+        retention-days: 14
+
+  publish:
+    name: Publish Artifacts
+    runs-on: ubuntu-latest
+    needs: [build-and-test, quality-checks, security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Publish application
+      run: |
+        dotnet publish ./src/ElevatorSimulation.ConsoleApp/ElevatorSimulation.ConsoleApp.csproj \
+          --configuration Release \
+          --output ./publish \
+          --runtime linux-x64 \
+          --self-contained true \
+          /p:PublishSingleFile=true \
+          /p:PublishTrimmed=true
+    
+    - name: Upload publish artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: elevator-simulation-app
+        path: ./publish
+        retention-days: 7
+
+  deploy:
+    name: Deploy (Optional)
+    runs-on: ubuntu-latest
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Download published artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: elevator-simulation-app
+        path: ./app
+    
+    - name: Simulate deployment
+      run: |
+        echo "🚀 Deploying Elevator Simulation to Production..."
+        echo "✅ Application version: $(cat ./app/ElevatorSimulation.ConsoleApp.runtimeconfig.json | jq -r .runtimeOptions.tfm)"
+        echo "📦 Deployment completed successfully!"
+    
+    # Uncomment and configure for actual deployment
+    # - name: Deploy to Azure
+    #   uses: azure/webapps-deploy@v2
+    #   with:
+    #     app-name: 'elevator-simulation'
+    #     slot-name: 'production'
+    #     package: ./app
+
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [build-and-test, quality-checks, security-scan, sonarcloud]
+    if: always()
+    
+    steps:
+    - name: Check build status
+      id: status
+      run: |
+        if [[ "${{ needs.build-and-test.result }}" == "success" && \
+              "${{ needs.quality-checks.result }}" == "success" && \
+              "${{ needs.security-scan.result }}" == "success" ]]; then
+          echo "status=✅ Build Successful" >> $GITHUB_OUTPUT
+          echo "color=green" >> $GITHUB_OUTPUT
+        elif [[ "${{ needs.build-and-test.result }}" == "failure" || \
+                "${{ needs.quality-checks.result }}" == "failure" || \
+                "${{ needs.security-scan.result }}" == "failure" ]]; then
+          echo "status=❌ Build Failed" >> $GITHUB_OUTPUT
+          echo "color=red" >> $GITHUB_OUTPUT
+        else
+          echo "status=⚠️ Build Partial Success" >> $GITHUB_OUTPUT
+          echo "color=yellow" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Send notification (Slack)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        payload: |
+          {
+            "text": "Elevator Simulation Build Status",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "${{ steps.status.outputs.status }} for commit <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\n${{ github.ref_name }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Coverage:*\n${{ needs.build-and-test.outputs.coverage }}%"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

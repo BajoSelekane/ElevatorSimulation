@@ -3,13 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Folder Include="Enums\" />
-    <Folder Include="Interfaces\" />
-    <Folder Include="Exceptions\" />
-  </ItemGroup>
 
 </Project>
