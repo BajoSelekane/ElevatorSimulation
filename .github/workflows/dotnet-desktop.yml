@@ -9,10 +9,9 @@ on:
 
 jobs:
   build-and-test:
-  name: Build & Test
-  runs-on: ubuntu-latest
-      # No external services needed for this soluti
-   steps:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
