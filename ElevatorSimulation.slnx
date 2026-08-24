@@ -8,4 +8,8 @@
     <Project Path="ElevatorSimulation.Infrastructure/ElevatorSimulation.Infrastructure.csproj" />
     <Project Path="ElevatorSimulation.Integration.Tests/ElevatorSimulation.Integration.Tests.csproj" />
   </Folder>
+  <Folder Name="/src/.github/" />
+  <Folder Name="/src/.github/workflows/">
+    <File Path="ci.yml" />
+  </Folder>
 </Solution>
