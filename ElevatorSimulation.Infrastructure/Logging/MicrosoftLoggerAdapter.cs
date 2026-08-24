@@ -4,7 +4,8 @@ using Microsoft.Extensions.Logging;
 namespace ElevatorSimulation.Infrastructure.Logging
 {
     // Adapter to satisfy Microsoft.Extensions.Logging.ILogger dependencies
-    public class MicrosoftLoggerAdapter : Microsoft.Extensions.Logging.ILogger
+    // Also implements the project's ILogger so it can be used interchangeably in tests
+    public class MicrosoftLoggerAdapter : Microsoft.Extensions.Logging.ILogger, ILogger
     {
         private readonly ILogger _logger;
 
@@ -49,5 +50,13 @@ namespace ElevatorSimulation.Infrastructure.Logging
             public static NullScope Instance { get; } = new NullScope();
             public void Dispose() { }
         }
+
+        // Implement project's ILogger by delegating to the wrapped logger
+        public void LogInfo(string message) => _logger.LogInfo(message);
+        public void LogSuccess(string message) => _logger.LogSuccess(message);
+        public void LogWarning(string message) => _logger.LogWarning(message);
+        public void LogError(string message) => _logger.LogError(message);
+        public void LogDebug(string message) => _logger.LogDebug(message);
+        public void LogException(Exception ex, string context = null) => _logger.LogException(ex, context);
     }
 }

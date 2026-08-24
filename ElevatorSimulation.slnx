@@ -6,5 +6,6 @@
     <Project Path="ElevatorSimulation.Domain.Tests/ElevatorSimulation.Domain.Tests.csproj" />
     <Project Path="ElevatorSimulation.Domain/ElevatorSimulation.Domain.csproj" />
     <Project Path="ElevatorSimulation.Infrastructure/ElevatorSimulation.Infrastructure.csproj" />
+    <Project Path="ElevatorSimulation.Integration.Tests/ElevatorSimulation.Integration.Tests.csproj" />
   </Folder>
 </Solution>

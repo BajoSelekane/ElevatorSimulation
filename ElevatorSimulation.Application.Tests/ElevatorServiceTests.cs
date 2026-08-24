@@ -11,7 +11,7 @@ using ElevatorSimulation.Domain.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Castle.Core.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace ElevatorSimulation.Application.Tests
 {
@@ -104,7 +104,7 @@ namespace ElevatorSimulation.Application.Tests
             result.Should().NotBeNull();
             result.FloorCount.Should().Be(10);
             result.ElevatorCount.Should().Be(2);
-            result.TotalPassengersWaiting.Should().BeGreaterOrEqualTo(0);
+            result.TotalPassengersWaiting.Should().BeGreaterThanOrEqualTo(0);
             result.PassengersPerFloor.Should().NotBeNull();
         }
 

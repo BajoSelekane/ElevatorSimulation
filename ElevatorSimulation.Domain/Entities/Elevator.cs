@@ -12,7 +12,7 @@ namespace ElevatorSimulation.Domain.Entities
         private readonly object _lockObject = new object();
 
         public int Id { get; }
-        public int CurrentFloor { get; private set; }
+        public int CurrentFloor { get; set; }
         public ElevatorDirection Direction { get; private set; }
         public ElevatorStatus Status { get; private set; }
         public ElevatorType Type { get; }

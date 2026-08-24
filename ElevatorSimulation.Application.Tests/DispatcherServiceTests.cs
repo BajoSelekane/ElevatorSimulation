@@ -10,7 +10,7 @@ using ElevatorSimulation.Domain.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Castle.Core.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace ElevatorSimulation.Application.Tests
 {
@@ -158,7 +158,7 @@ namespace ElevatorSimulation.Application.Tests
 
             // Assert
             result.Should().NotBeNull();
-            result.ElevatorId.Should().Be(3); // Closest to floor 5
+            result.Id.Should().Be(3); // Closest to floor 5
         }
 
         [Fact]
@@ -250,7 +250,12 @@ namespace ElevatorSimulation.Application.Tests
             _dispatcher.OptimizeDispatchPatterns();
 
             // Assert
-            _mockLogger.Verify(l => l.LogInfo(It.IsAny<string>()), Times.AtLeast(3));
+            _mockLogger.Verify(l => l.Log(
+                It.Is<Microsoft.Extensions.Logging.LogLevel>(level => level == Microsoft.Extensions.Logging.LogLevel.Information),
+                It.IsAny<Microsoft.Extensions.Logging.EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.AtLeast(3));
         }
 
         [Fact]

@@ -55,7 +55,7 @@ namespace ElevatorSimulation.Application.Tests
 
             // Assert
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e => e.Contains("between 0 and 10"));
+            result.Errors.Should().Contain(e => e.ErrorMessage.Contains("between 0 and 10"));
         }
 
         [Theory]
@@ -76,7 +76,7 @@ namespace ElevatorSimulation.Application.Tests
 
             // Assert
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e => e.Contains("Passenger count"));
+            result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Passenger count"));
         }
 
         [Fact]
@@ -115,7 +115,7 @@ namespace ElevatorSimulation.Application.Tests
 
             // Assert
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e => e.Contains("Elevator ID"));
+            result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Elevator ID"));
         }
 
         [Fact]
@@ -154,7 +154,7 @@ namespace ElevatorSimulation.Application.Tests
 
             // Assert
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e => e.Contains("different"));
+            result.Errors.Should().Contain(e => e.ErrorMessage.Contains("different"));
         }
 
         [Theory]
@@ -176,7 +176,7 @@ namespace ElevatorSimulation.Application.Tests
 
             // Assert
             result.IsValid.Should().BeFalse();
-            result.Errors.Should().Contain(e => e.Contains("Weight"));
+            result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Weight"));
         }
     }
 }
