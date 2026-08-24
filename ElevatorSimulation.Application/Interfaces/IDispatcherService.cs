@@ -1,5 +1,6 @@
 ﻿using ElevatorSimulation.Application.DTOs;
 using ElevatorSimulation.Domain.Entities;
+using ElevatorSimulation.Domain.Interfaces;
 
 namespace ElevatorSimulation.Application.Interfaces
 {
@@ -7,7 +8,7 @@ namespace ElevatorSimulation.Application.Interfaces
     {
         DispatchResponseDto DispatchElevator(FloorRequestDto request);
         DispatchResponseDto AssignPassengerToElevator(PassengerRequestDto request);
-        ElevatorStatusDto GetNearestAvailableElevator(int floorNumber);
+        IElevator GetNearestAvailableElevator(int floorNumber);
         bool IsElevatorAvailableForFloor(int elevatorId, int floorNumber);
         void ProcessElevatorQueue(int elevatorId);
         int CalculateEstimatedWaitTime(int floorNumber);

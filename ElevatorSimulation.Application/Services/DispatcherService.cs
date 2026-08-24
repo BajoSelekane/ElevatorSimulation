@@ -196,10 +196,10 @@ namespace ElevatorSimulation.Application.Services
             }
         }
 
-        public ElevatorStatusDto GetNearestAvailableElevator(int floorNumber)
+        public IElevator GetNearestAvailableElevator(int floorNumber)
         {
             var elevator = GetNearestAvailableElevatorInternal(floorNumber);
-            return elevator != null ? MapToStatusDto(elevator) : null;
+            return elevator; // return domain elevator for callers to operate on
         }
 
         public bool IsElevatorAvailableForFloor(int elevatorId, int floorNumber)

@@ -14,7 +14,10 @@ namespace ElevatorSimulation.Infrastructure.Logging
         void LogException(Exception ex, string context = null);
     }
 
-    public class ConsoleLogger : ILogger
+    // Backwards-compatible console-specific logger interface
+    public interface IConsoleLogger : ILogger { }
+
+    public class ConsoleLogger : ILogger, IConsoleLogger
     {
         private readonly string _logFilePath;
         private readonly ConcurrentQueue<string> _logQueue;
@@ -138,7 +141,7 @@ namespace ElevatorSimulation.Infrastructure.Logging
         }
     }
 
-    public class NullLogger : ILogger
+    public class NullLogger : ILogger, IConsoleLogger
     {
         public void LogInfo(string message) { }
         public void LogSuccess(string message) { }
@@ -146,5 +149,14 @@ namespace ElevatorSimulation.Infrastructure.Logging
         public void LogError(string message) { }
         public void LogDebug(string message) { }
         public void LogException(Exception ex, string context = null) { }
+    }
+
+    public static class LoggerExtensions
+    {
+        public static void Info(this ILogger logger, string message) => logger.LogInfo(message);
+        public static void Success(this ILogger logger, string message) => logger.LogSuccess(message);
+        public static void Warning(this ILogger logger, string message) => logger.LogWarning(message);
+        public static void Error(this ILogger logger, string message) => logger.LogError(message);
+        public static void Debug(this ILogger logger, string message) => logger.LogDebug(message);
     }
 }

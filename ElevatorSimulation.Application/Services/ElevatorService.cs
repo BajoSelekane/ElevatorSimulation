@@ -139,6 +139,21 @@ namespace ElevatorSimulation.Application.Services
                         };
                     }
 
+                    // If the elevator is already at the requested floor, treat as successful no-op
+                    if (elevator.CurrentFloor == request.TargetFloor)
+                    {
+                        // Optionally open doors to simulate arrival
+                        try { elevator.OpenDoors(); Thread.Sleep(500); elevator.CloseDoors(); } catch { }
+
+                        return new DispatchResponseDto
+                        {
+                            Success = true,
+                            Message = $"Elevator {request.ElevatorId} is already at floor {request.TargetFloor}",
+                            Elevator = MapToStatusDto(elevator),
+                            EstimatedWaitTime = 0
+                        };
+                    }
+
                     elevator.AddDestination(request.TargetFloor);
                     elevator.MoveToNextDestination();
 

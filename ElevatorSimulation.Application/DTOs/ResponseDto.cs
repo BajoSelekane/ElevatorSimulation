@@ -5,6 +5,8 @@ namespace ElevatorSimulation.Application.DTOs
     public class ElevatorStatusDto
     {
         public int ElevatorId { get; set; }
+        // Backwards-compatible alias used in some parts of the codebase
+        public int Id { get => ElevatorId; set => ElevatorId = value; }
         public int CurrentFloor { get; set; }
         public ElevatorDirection Direction { get; set; }
         public ElevatorStatus Status { get; set; }

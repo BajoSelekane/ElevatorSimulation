@@ -4,7 +4,9 @@ using ElevatorSimulation.Application.Interfaces;
 using ElevatorSimulation.ConsoleApp.UI;
 using ElevatorSimulation.Infrastructure.Logging;
 using ElevatorSimulation.Domain.Entities;
+using ElevatorSimulation.Domain.Interfaces;
 using System;
+
 
 namespace ElevatorSimulation.ConsoleApp
 {
@@ -15,6 +17,7 @@ namespace ElevatorSimulation.ConsoleApp
             Console.Title = "Elevator Simulation System v2.0";
             Console.WindowWidth = 120;
             Console.WindowHeight = 40;
+            
 
             try
             {
@@ -54,9 +57,15 @@ namespace ElevatorSimulation.ConsoleApp
                 building.AddElevator(elevator);
             }
 
-            // Services
             services.AddSingleton(building);
-            services.AddSingleton<IBuilding>(building);
+            services.AddSingleton<IBuilding>(sp => building);
+            services.AddSingleton<ILogger, ConsoleLogger>();
+            // also register Microsoft.Extensions.Logging.ILogger adapter for services that require it
+            services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp =>
+            {
+                var ourLogger = sp.GetRequiredService<ElevatorSimulation.Infrastructure.Logging.ILogger>();
+                return new ElevatorSimulation.Infrastructure.Logging.MicrosoftLoggerAdapter(ourLogger);
+            });
             services.AddSingleton<IConsoleLogger, ConsoleLogger>();
             services.AddSingleton<IElevatorService, ElevatorService>();
             services.AddSingleton<IDispatcherService, DispatcherService>();

@@ -30,6 +30,13 @@ namespace ElevatorSimulation.Infrastructure.Extensions
 
             // Logging
             services.AddSingleton<ILogger, ConsoleLogger>();
+            // Provide Microsoft.Extensions.Logging.ILogger via adapter so application services
+            // that depend on the Microsoft logging abstraction can be resolved.
+            services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp =>
+            {
+                var ourLogger = sp.GetRequiredService<ILogger>();
+                return new ElevatorSimulation.Infrastructure.Logging.MicrosoftLoggerAdapter(ourLogger);
+            });
 
             // Domain
             services.AddSingleton<IBuilding>(sp =>

@@ -2,6 +2,7 @@
 using ElevatorSimulation.Domain.Enums;
 using ElevatorSimulation.Application.Services;
 using ElevatorSimulation.Application.Interfaces;
+using ElevatorSimulation.Infrastructure.Logging;
 using System;
 
 namespace ElevatorSimulation.ConsoleApp.UI
@@ -10,7 +11,7 @@ namespace ElevatorSimulation.ConsoleApp.UI
     {
         private readonly IElevatorService _elevatorService;
         private readonly IDispatcherService _dispatcherService;
-        private readonly IConsoleLogger _logger;
+        private readonly ILogger _logger;
         private bool _isRunning;
 
         public ConsoleUI(IElevatorService elevatorService,
@@ -25,9 +26,9 @@ namespace ElevatorSimulation.ConsoleApp.UI
 
         public async Task RunAsync()
         {
-            _logger.Info("========================================");
-            _logger.Info("       ELEVATOR SIMULATOR v2.0         ");
-            _logger.Info("========================================");
+            _logger.LogInfo("========================================");
+            _logger.LogInfo("       ELEVATOR SIMULATOR v2.0         ");
+            _logger.LogInfo("========================================");
 
             while (_isRunning)
             {
@@ -44,7 +45,7 @@ namespace ElevatorSimulation.ConsoleApp.UI
             _logger.Info("========================================");
             _logger.Info("           MAIN MENU                    ");
             _logger.Info("========================================");
-            _logger.Info("");
+                    _logger.LogInfo("");
             _logger.Info("1. Call Elevator");
             _logger.Info("2. View Elevator Status");
             _logger.Info("3. Add Passenger");
@@ -104,36 +105,90 @@ namespace ElevatorSimulation.ConsoleApp.UI
                 var passengerCount = GetValidatedPassengerCount();
                 if (passengerCount == null) return;
 
-                _logger.Info($"\n📢 Calling elevator to Floor {floorNumber} with {passengerCount} passenger(s)...");
+                _logger.LogInfo($"\n📢 Calling elevator to Floor {floorNumber} with {passengerCount} passenger(s)...");
 
-                var elevator = await Task.Run(() =>
-                    _dispatcherService.DispatchElevator(floorNumber.Value, passengerCount.Value));
+                var request = new ElevatorSimulation.Application.DTOs.FloorRequestDto
+                {
+                    FloorNumber = floorNumber.Value,
+                    PassengerCount = passengerCount.Value
+                };
 
-                _logger.Success($"✅ Elevator {elevator.Id} dispatched to Floor {floorNumber.Value}");
-                _logger.Info($"📊 {elevator.ToString()}");
+                var response = await Task.Run(() => _dispatcherService.DispatchElevator(request));
 
-                await SimulateElevatorMovementAsync(elevator, floorNumber.Value);
+                if (response == null || !response.Success)
+                {
+                    _logger.Error($"Failed to dispatch elevator: {response?.Message ?? "Unknown error"}");
+                    return;
+                }
 
-                _logger.Success($"🚪 Elevator {elevator.Id} has arrived at Floor {floorNumber.Value}");
-                _logger.Info("➡️ Press any key to continue...");
+                var elevatorDto = response.Elevator;
+                // If the dispatcher returned an elevator that's already at the target floor, show a clear message
+                if (elevatorDto.CurrentFloor == floorNumber.Value)
+                {
+                    _logger.LogInfo($"Elevator {elevatorDto.ElevatorId} is already at Floor {floorNumber.Value}. No travel required.");
+                }
+                else
+                {
+                    _logger.LogSuccess($"✅ Elevator {elevatorDto.ElevatorId} dispatched to Floor {floorNumber.Value}");
+                }
+
+                _logger.LogInfo($"📊 {elevatorDto}");
+
+                // Instruct domain elevator to move (service will operate on domain model)
+                var sendReq = new ElevatorSimulation.Application.DTOs.ElevatorRequestDto
+                {
+                    ElevatorId = elevatorDto.ElevatorId,
+                    TargetFloor = floorNumber.Value
+                };
+
+                var sendResponse = _elevatorService.SendElevatorToFloor(sendReq);
+
+                if (sendResponse != null)
+                {
+                    if (sendResponse.Success)
+                    {
+                        // If SendElevatorToFloor reported the elevator was already at the floor, show that explicitly
+                        if (sendResponse.EstimatedWaitTime == 0 || (sendResponse.Message ?? string.Empty).Contains("already at floor"))
+                        {
+                            _logger.LogInfo($"{sendResponse.Message}");
+                        }
+                        else
+                        {
+                            _logger.LogInfo($"{sendResponse.Message}");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Failed to send elevator: {sendResponse.Message}");
+                    }
+                }
+
+                await SimulateElevatorMovementAsync(elevatorDto, floorNumber.Value);
+
+                _logger.LogSuccess($"🚪 Elevator {elevatorDto.ElevatorId} has arrived at Floor {floorNumber.Value}");
+                _logger.LogInfo("➡️ Press any key to continue...");
                 Console.ReadKey();
             }
             catch (Exception ex)
             {
-                _logger.Error($"❌ Error: {ex.Message}");
-                _logger.Info("➡️ Press any key to return to menu...");
+                _logger.LogError($"❌ Error: {ex.Message}");
+                _logger.LogInfo("➡️ Press any key to return to menu...");
                 Console.ReadKey();
             }
         }
 
-        private async Task SimulateElevatorMovementAsync(Elevator elevator, int targetFloor)
+        private async Task SimulateElevatorMovementAsync(ElevatorSimulation.Application.DTOs.ElevatorStatusDto elevator, int targetFloor)
         {
-            if (elevator.CurrentFloor == targetFloor) return;
+            if (elevator.CurrentFloor == targetFloor)
+            {
+                _logger.LogInfo($"No movement required; Elevator {elevator.ElevatorId} is already at Floor {targetFloor}.");
+                return;
+            }
 
             var startFloor = elevator.CurrentFloor;
             var direction = targetFloor > startFloor ? "Up" : "Down";
 
-            _logger.Info($"🚀 Elevator {elevator.Id} moving {direction} from Floor {startFloor} to Floor {targetFloor}...");
+            _logger.Info($"🚀 Elevator {elevator.ElevatorId} moving {direction} from Floor {startFloor} to Floor {targetFloor}...");
 
             // Simulate movement with progress
             var steps = Math.Abs(targetFloor - startFloor);
@@ -148,28 +203,26 @@ namespace ElevatorSimulation.ConsoleApp.UI
                 _logger.Info($" 📍 Floor {currentPos}");
             }
             Console.WriteLine();
-
-            elevator.MoveToFloor(targetFloor);
         }
 
         private async Task HandleViewElevatorStatusAsync()
         {
             Console.Clear();
-            _logger.Info("========================================");
-            _logger.Info("      ELEVATOR STATUS                   ");
-            _logger.Info("========================================");
-            _logger.Info("");
+            _logger.LogInfo("========================================");
+            _logger.LogInfo("      ELEVATOR STATUS                   ");
+            _logger.LogInfo("========================================");
+            _logger.LogInfo("");
 
             var elevators = _elevatorService.GetAllElevators();
             foreach (var elevator in elevators)
             {
-                _logger.Info($"📊 {elevator.ToString()}");
-                _logger.Info($"   Destination Queue: [{string.Join(", ", elevator.DestinationQueue)}]");
-                _logger.Info("");
+                _logger.LogInfo($"📊 {elevator.ToString()}");
+                _logger.LogInfo($"   Destination Queue: [{string.Join(", ", elevator.DestinationQueue)}]");
+                _logger.LogInfo("");
             }
 
-            _logger.Info("========================================");
-            _logger.Info("➡️ Press any key to return to menu...");
+            _logger.LogInfo("========================================");
+            _logger.LogInfo("➡️ Press any key to return to menu...");
             Console.ReadKey();
         }
 
