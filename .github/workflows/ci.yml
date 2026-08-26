@@ -31,14 +31,14 @@
 #           ${{ runner.os }}-nuget-
     
 #     - name: Restore dependencies
-#       run: dotnet restore ElevatorSimulation.slnx
+#       run: dotnet restore ElevatorSimulation.sln
     
 #     - name: Build solution
-#       run: dotnet build ElevatorSimulation.slnx --configuration Release --no-restore
+#       run: dotnet build ElevatorSimulation.sln --configuration Release --no-restore
     
 #     - name: Run tests with coverage
 #       run: |
-#         dotnet test ElevatorSimulation.slnx \
+#         dotnet test ElevatorSimulation.sln \
 #           --configuration Release \
 #           --no-build \
 #           --verbosity normal \
@@ -351,7 +351,7 @@ permissions:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  SOLUTION: 'ElevatorSimulation.slnx'
+  SOLUTION: 'ElevatorSimulation.sln'
   CONFIGURATION: 'Release'
 
 jobs:
