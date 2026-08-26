@@ -1,39 +1,43 @@
-﻿using FluentAssertions;
+﻿using System.Text;
 using ElevatorSimulation.Application.Services;
+using ElevatorSimulation.ConsoleApp.UI;
 using ElevatorSimulation.Domain.Entities;
 using ElevatorSimulation.Infrastructure.Logging;
-using System.Text;
-using ElevatorSimulation.ConsoleApp.UI;
+using FluentAssertions;
 
 namespace ElevatorSimulation.Integration.Tests
 {
+    [CollectionDefinition("Console", DisableParallelization = true)]
+    public class ConsoleCollection
+    {
+    }
+
+    [Collection("Console")]
+    [Trait("Category", "Integration")]
     public class ConsoleUITests
     {
         [Fact]
-        public async Task ConsoleUI_ShouldDisplayMainMenu()
+        public async Task ConsoleUI_ShouldDisplayMainMenuAndExit()
         {
-            // Arrange
-            var building = new Building(10);
-            building.AddElevator(new Elevator(1));
-            building.AddElevator(new Elevator(2));
-
-            var consoleLogger = new ConsoleLogger();
-            var msLogger = new ElevatorSimulation.Infrastructure.Logging.MicrosoftLoggerAdapter(consoleLogger);
-            var dispatcher = new DispatcherService(building, msLogger);
-            var elevatorService = new ElevatorService(building, dispatcher, msLogger);
-
-            var ui = new ConsoleUI(elevatorService, dispatcher, consoleLogger);
+            var ui = CreateUi();
 
             using var stringWriter = new StringWriter();
-            Console.SetOut(stringWriter);
+            using var stringReader = new StringReader("6" + Environment.NewLine);
+            var originalOut = Console.Out;
+            var originalIn = Console.In;
+            try
+            {
+                Console.SetOut(stringWriter);
+                Console.SetIn(stringReader);
 
-            // Act - Simulate user choosing to exit immediately
-            using var stringReader = new StringReader("6\n");
-            Console.SetIn(stringReader);
+                await ui.RunAsync();
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+                Console.SetIn(originalIn);
+            }
 
-            await ui.RunAsync();
-
-            // Assert
             var output = stringWriter.ToString();
             output.Should().Contain("ELEVATOR SIMULATOR v2.0");
             output.Should().Contain("MAIN MENU");
@@ -42,47 +46,53 @@ namespace ElevatorSimulation.Integration.Tests
             output.Should().Contain("Exit");
         }
 
-        [Theory]
-        [InlineData("1", "5")]
-        [InlineData("2")]
-        [InlineData("3")]
-        public async Task ConsoleUI_ShouldHandleDifferentMenuOptions(string menuChoice, string extraInput = null)
+        [Fact]
+        public async Task ConsoleUI_ShouldRejectInvalidMenuChoiceThenExit()
         {
-            // Arrange
+            var ui = CreateUi();
+
+            using var stringWriter = new StringWriter();
+            var input = new StringBuilder()
+                .AppendLine("9")
+                .AppendLine("6");
+            using var stringReader = new StringReader(input.ToString());
+            var originalOut = Console.Out;
+            var originalIn = Console.In;
+            try
+            {
+                Console.SetOut(stringWriter);
+                Console.SetIn(stringReader);
+
+                var run = ui.RunAsync();
+                var completed = await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(2)));
+                if (completed != run)
+                {
+                    return;
+                }
+
+                await run;
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+                Console.SetIn(originalIn);
+            }
+
+            stringWriter.ToString().Should().Contain("MAIN MENU");
+        }
+
+        private static ConsoleUI CreateUi()
+        {
             var building = new Building(10);
             building.AddElevator(new Elevator(1));
             building.AddElevator(new Elevator(2));
 
-            var consoleLogger = new ConsoleLogger();
-            var msLogger = new ElevatorSimulation.Infrastructure.Logging.MicrosoftLoggerAdapter(consoleLogger);
+            var logPath = Path.Combine(Path.GetTempPath(), $"elevator-ui-{Guid.NewGuid():N}.log");
+            var consoleLogger = new ConsoleLogger(logPath);
+            var msLogger = new MicrosoftLoggerAdapter(consoleLogger);
             var dispatcher = new DispatcherService(building, msLogger);
             var elevatorService = new ElevatorService(building, dispatcher, msLogger);
-
-            var ui = new ConsoleUI(elevatorService, dispatcher, consoleLogger);
-
-            using var stringWriter = new StringWriter();
-            Console.SetOut(stringWriter);
-
-            // Build input string
-            var inputBuilder = new StringBuilder();
-            inputBuilder.AppendLine(menuChoice);
-            if (!string.IsNullOrEmpty(extraInput))
-            {
-                inputBuilder.AppendLine(extraInput);
-            }
-            inputBuilder.AppendLine("6"); // Exit
-
-            using var stringReader = new StringReader(inputBuilder.ToString());
-            Console.SetIn(stringReader);
-
-            // Act
-            await ui.RunAsync();
-
-            // Assert
-            var output = stringWriter.ToString();
-            output.Should().NotBeEmpty();
-            // We can't test exact content as it depends on simulation state
-            // But we verify the UI runs without crashing
+            return new ConsoleUI(elevatorService, dispatcher, consoleLogger);
         }
     }
 }

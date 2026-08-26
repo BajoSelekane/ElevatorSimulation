@@ -142,8 +142,15 @@ namespace ElevatorSimulation.Application.Services
                     // If the elevator is already at the requested floor, treat as successful no-op
                     if (elevator.CurrentFloor == request.TargetFloor)
                     {
-                        // Optionally open doors to simulate arrival
-                        try { elevator.OpenDoors(); Thread.Sleep(500); elevator.CloseDoors(); } catch { }
+                        try
+                        {
+                            elevator.OpenDoors();
+                            elevator.CloseDoors();
+                        }
+                        catch
+                        {
+                            // Already at floor; door cycle is best-effort.
+                        }
 
                         return new DispatchResponseDto
                         {
@@ -292,13 +299,8 @@ namespace ElevatorSimulation.Application.Services
                 var elevators = _building.GetElevators();
                 foreach (var elevator in elevators)
                 {
+                    elevator.SetOutOfService();
                     elevator.SetBackInService();
-                    // Clear destinations
-                    while (elevator.DestinationQueue.Count > 0)
-                    {
-                        elevator.GetNextDestination();
-                        // In real implementation, we'd need to dequeue properly
-                    }
                     elevator.MoveToFloor(0);
                 }
                 _logger.LogInformation("All elevators have been reset");

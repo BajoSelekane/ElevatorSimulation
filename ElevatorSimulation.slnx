@@ -8,8 +8,11 @@
     <Project Path="ElevatorSimulation.Infrastructure/ElevatorSimulation.Infrastructure.csproj" />
     <Project Path="ElevatorSimulation.Integration.Tests/ElevatorSimulation.Integration.Tests.csproj" />
   </Folder>
-  <Folder Name="/src/.github/" />
-  <Folder Name="/src/.github/workflows/">
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/ci.yml" />
+  </Folder>
+  <Folder Name="/">
     <File Path="ci.yml" />
+    <File Path="coverlet.runsettings" />
   </Folder>
 </Solution>

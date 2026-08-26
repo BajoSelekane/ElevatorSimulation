@@ -5,6 +5,7 @@ using System;
 
 namespace ElevatorSimulation.Domain.Tests
 {
+    [Trait("Category", "Unit")]
     public class FloorTests
     {
         [Fact]
@@ -123,6 +124,16 @@ namespace ElevatorSimulation.Domain.Tests
 
             // Act & Assert
             floor.HasWaitingPassengers().Should().BeTrue();
+        }
+
+        [Fact]
+        public void HasElevatorPresent_ShouldBeSettable()
+        {
+            var floor = new Floor(1);
+
+            floor.HasElevatorPresent.Should().BeFalse();
+            floor.HasElevatorPresent = true;
+            floor.HasElevatorPresent.Should().BeTrue();
         }
     }
 }

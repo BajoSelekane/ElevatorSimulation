@@ -2,9 +2,11 @@
 using FluentAssertions;
 using ElevatorSimulation.Application.DTOs;
 using ElevatorSimulation.Application.Validators;
+using ElevatorSimulation.Domain.Entities;
 
 namespace ElevatorSimulation.Application.Tests
 {
+    [Trait("Category", "Unit")]
     public class ValidatorsTests
     {
         private readonly FloorRequestValidator _floorValidator;
@@ -177,6 +179,60 @@ namespace ElevatorSimulation.Application.Tests
             // Assert
             result.IsValid.Should().BeFalse();
             result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Weight"));
+        }
+
+        [Fact]
+        public void FloorRequestValidator_ValidateRequest_ShouldReturnCustomResult()
+        {
+            var valid = _floorValidator.ValidateRequest(new FloorRequestDto
+            {
+                FloorNumber = 3,
+                PassengerCount = 1,
+                RequestType = "Destination"
+            });
+            var invalid = _floorValidator.ValidateRequest(new FloorRequestDto
+            {
+                FloorNumber = 3,
+                PassengerCount = 1,
+                RequestType = ""
+            });
+
+            valid.IsValid.Should().BeTrue();
+            invalid.IsValid.Should().BeFalse();
+            invalid.Errors.Should().Contain(e => e.Contains("Request type"));
+        }
+
+        [Fact]
+        public void BuildingValidator_ShouldRequireElevatorsAndFloors()
+        {
+            var validator = new BuildingValidator();
+            var empty = new Building(10);
+            var ready = new Building(10);
+            ready.AddElevator(new Elevator(1));
+
+            validator.Validate(empty).IsValid.Should().BeFalse();
+            validator.Validate(ready).IsValid.Should().BeTrue();
+        }
+
+        [Fact]
+        public void ElevatorValidator_ShouldValidateIdAndCapacity()
+        {
+            var validator = new ElevatorValidator();
+
+            validator.Validate(new Elevator(1, maxPassengers: 10)).IsValid.Should().BeTrue();
+            validator.Validate(new Elevator(0, maxPassengers: 10)).IsValid.Should().BeFalse();
+            validator.Validate(new Elevator(1, maxPassengers: 25)).IsValid.Should().BeFalse();
+        }
+
+        [Fact]
+        public void PassengerValidator_ShouldRejectSameFloorAndInvalidWeight()
+        {
+            var validator = new PassengerValidator(10);
+
+            validator.Validate(new Passenger(1, 2, 8, 70)).IsValid.Should().BeTrue();
+            validator.Validate(new Passenger(1, 2, 2, 70)).IsValid.Should().BeFalse();
+            validator.Validate(new Passenger(1, 2, 8, 0)).IsValid.Should().BeFalse();
+            validator.Validate(new Passenger(0, 2, 8, 70)).IsValid.Should().BeFalse();
         }
     }
 }

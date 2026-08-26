@@ -1,22 +1,14 @@
-# Canonical GitHub Actions workflow lives at:
-#   .github/workflows/ci.yml
-#
-# This file is kept at the solution root so the workflow is visible from the
-# repo and from ElevatorSimulation.slnx. Keep both files in sync.
-
 name: Elevator Simulation CI
 
 on:
   push:
     branches:
       - master
-      - main
       - develop
       - 'feature/**'
   pull_request:
     branches:
       - master
-      - main
       - develop
   workflow_dispatch:
 

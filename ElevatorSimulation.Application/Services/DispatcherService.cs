@@ -370,7 +370,6 @@ namespace ElevatorSimulation.Application.Services
             else
             {
                 elevator.OpenDoors();
-                Thread.Sleep(2000);
                 elevator.CloseDoors();
             }
         }

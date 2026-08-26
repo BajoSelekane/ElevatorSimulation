@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ElevatorSimulation.Application.Tests
 {
+    [Trait("Category", "Unit")]
     public class ElevatorServiceTests
     {
         private readonly Mock<IBuilding> _mockBuilding;
@@ -119,6 +120,7 @@ namespace ElevatorSimulation.Application.Tests
                 Message = "Elevator dispatched",
                 Elevator = new ElevatorStatusDto { ElevatorId = 1 }
             };
+            _mockBuilding.Setup(b => b.IsValidFloor(5)).Returns(true);
             _mockDispatcher.Setup(d => d.DispatchElevator(request)).Returns(dispatchResponse);
 
             // Act
@@ -274,6 +276,209 @@ namespace ElevatorSimulation.Application.Tests
 
             // Assert
             result.Should().BeNull();
+        }
+
+        [Fact]
+        public void Constructor_NullDependencies_ShouldThrow()
+        {
+            Action noBuilding = () => _ = new ElevatorService(null!, _mockDispatcher.Object, _mockLogger.Object);
+            Action noDispatcher = () => _ = new ElevatorService(_mockBuilding.Object, null!, _mockLogger.Object);
+            Action noLogger = () => _ = new ElevatorService(_mockBuilding.Object, _mockDispatcher.Object, null!);
+
+            noBuilding.Should().Throw<ArgumentNullException>();
+            noDispatcher.Should().Throw<ArgumentNullException>();
+            noLogger.Should().Throw<ArgumentNullException>();
+        }
+
+        [Fact]
+        public void CallElevator_WhenDispatcherFails_ShouldReturnFailure()
+        {
+            var request = new FloorRequestDto { FloorNumber = 5, PassengerCount = 1 };
+            _mockBuilding.Setup(b => b.IsValidFloor(5)).Returns(true);
+            _mockDispatcher.Setup(d => d.DispatchElevator(request))
+                .Returns(new DispatchResponseDto { Success = false, Message = "busy" });
+
+            var result = _service.CallElevator(request);
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Be("busy");
+        }
+
+        [Fact]
+        public void CallElevator_WhenDispatcherThrows_ShouldReturnSystemError()
+        {
+            var request = new FloorRequestDto { FloorNumber = 5, PassengerCount = 1 };
+            _mockBuilding.Setup(b => b.IsValidFloor(5)).Returns(true);
+            _mockDispatcher.Setup(d => d.DispatchElevator(request)).Throws(new InvalidOperationException("boom"));
+
+            var result = _service.CallElevator(request);
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("System error");
+        }
+
+        [Fact]
+        public void SendElevatorToFloor_InvalidFloor_ShouldFail()
+        {
+            _mockBuilding.Setup(b => b.GetElevator(1)).Returns(new Elevator(1));
+            _mockBuilding.Setup(b => b.IsValidFloor(99)).Returns(false);
+
+            var result = _service.SendElevatorToFloor(new ElevatorRequestDto { ElevatorId = 1, TargetFloor = 99 });
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("Invalid floor");
+        }
+
+        [Fact]
+        public void SendElevatorToFloor_OutOfService_ShouldFail()
+        {
+            var elevator = new Elevator(1);
+            elevator.SetOutOfService();
+            _mockBuilding.Setup(b => b.GetElevator(1)).Returns(elevator);
+            _mockBuilding.Setup(b => b.IsValidFloor(5)).Returns(true);
+
+            var result = _service.SendElevatorToFloor(new ElevatorRequestDto { ElevatorId = 1, TargetFloor = 5 });
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("out of service");
+        }
+
+        [Fact]
+        public void SendElevatorToFloor_AlreadyAtFloor_ShouldSucceedWithoutTravel()
+        {
+            var elevator = new Elevator(1);
+            _mockBuilding.Setup(b => b.GetElevator(1)).Returns(elevator);
+            _mockBuilding.Setup(b => b.IsValidFloor(0)).Returns(true);
+
+            var result = _service.SendElevatorToFloor(new ElevatorRequestDto { ElevatorId = 1, TargetFloor = 0 });
+
+            result.Success.Should().BeTrue();
+            result.Message.Should().Contain("already at floor");
+            result.EstimatedWaitTime.Should().Be(0);
+        }
+
+        [Fact]
+        public void SendElevatorToFloor_WhenGetElevatorThrows_ShouldReturnError()
+        {
+            _mockBuilding.Setup(b => b.GetElevator(9)).Throws(new ElevatorNotFoundException("missing"));
+
+            var result = _service.SendElevatorToFloor(new ElevatorRequestDto { ElevatorId = 9, TargetFloor = 3 });
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("Error:");
+        }
+
+        [Fact]
+        public void AddPassenger_InvalidCurrentFloor_ShouldFail()
+        {
+            _mockBuilding.Setup(b => b.IsValidFloor(20)).Returns(false);
+
+            var result = _service.AddPassenger(new PassengerRequestDto
+            {
+                Id = 1,
+                CurrentFloor = 20,
+                DestinationFloor = 1
+            });
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("Invalid current floor");
+        }
+
+        [Fact]
+        public void AddPassenger_InvalidDestination_ShouldFail()
+        {
+            _mockBuilding.Setup(b => b.IsValidFloor(1)).Returns(true);
+            _mockBuilding.Setup(b => b.IsValidFloor(20)).Returns(false);
+
+            var result = _service.AddPassenger(new PassengerRequestDto
+            {
+                Id = 1,
+                CurrentFloor = 1,
+                DestinationFloor = 20
+            });
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("Invalid destination floor");
+        }
+
+        [Fact]
+        public void AddPassenger_SameFloors_ShouldFail()
+        {
+            _mockBuilding.Setup(b => b.IsValidFloor(5)).Returns(true);
+
+            var result = _service.AddPassenger(new PassengerRequestDto
+            {
+                Id = 1,
+                CurrentFloor = 5,
+                DestinationFloor = 5
+            });
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("must be different");
+        }
+
+        [Fact]
+        public void AddPassenger_WhenDispatchFails_ShouldReportWaitingList()
+        {
+            _mockBuilding.Setup(b => b.IsValidFloor(It.IsAny<int>())).Returns(true);
+            _mockBuilding.Setup(b => b.GetFloor(2)).Returns(new Floor(2));
+            _mockDispatcher.Setup(d => d.DispatchElevator(It.IsAny<FloorRequestDto>()))
+                .Returns(new DispatchResponseDto { Success = false, Message = "queued" });
+
+            var result = _service.AddPassenger(new PassengerRequestDto
+            {
+                Id = 0,
+                CurrentFloor = 2,
+                DestinationFloor = 8,
+                Weight = 70
+            });
+
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("dispatch failed");
+        }
+
+        [Fact]
+        public void ProcessNextDestination_EmptyQueue_ShouldReturnFalse()
+        {
+            _mockBuilding.Setup(b => b.GetElevator(1)).Returns(new Elevator(1));
+
+            _service.ProcessNextDestination(1).Should().BeFalse();
+        }
+
+        [Fact]
+        public void ProcessNextDestination_WhenMissingElevator_ShouldReturnFalse()
+        {
+            _mockBuilding.Setup(b => b.GetElevator(9)).Throws(new ElevatorNotFoundException("missing"));
+
+            _service.ProcessNextDestination(9).Should().BeFalse();
+        }
+
+        [Fact]
+        public void UpdateElevatorSpeed_ShouldNotThrow()
+        {
+            _service.Invoking(s => s.UpdateElevatorSpeed(1, 5)).Should().NotThrow();
+        }
+
+        [Fact]
+        public void GetNearestElevatorStatus_WhenDispatcherThrows_ShouldReturnNull()
+        {
+            _mockDispatcher.Setup(d => d.GetNearestAvailableElevator(4)).Throws(new InvalidOperationException("fail"));
+
+            _service.GetNearestElevatorStatus(4).Should().BeNull();
+        }
+
+        [Fact]
+        public void ResetAllElevators_ShouldClearDestinations()
+        {
+            var elevator = new Elevator(1);
+            elevator.AddDestination(6);
+            _mockBuilding.Setup(b => b.GetElevators()).Returns(new List<IElevator> { elevator });
+
+            _service.ResetAllElevators();
+
+            elevator.DestinationQueue.Should().BeEmpty();
+            elevator.CurrentFloor.Should().Be(0);
+            elevator.Status.Should().Be(ElevatorStatus.Stationary);
         }
     }
 }

@@ -7,6 +7,7 @@ using System.Linq;
 
 namespace ElevatorSimulation.Domain.Tests
 {
+    [Trait("Category", "Unit")]
     public class BuildingTests
     {
         [Fact]
@@ -27,7 +28,7 @@ namespace ElevatorSimulation.Domain.Tests
             // Act & Assert
             Action act = () => new Building(0);
             act.Should().Throw<ArgumentException>()
-                .WithMessage("Building must have at least >= 1 floor.");
+                .WithMessage("*Building must have at least 1 floor*");
         }
 
         [Fact]
@@ -179,6 +180,19 @@ namespace ElevatorSimulation.Domain.Tests
 
             // Assert
             count.Should().Be(1);
+        }
+
+        [Fact]
+        public void GetElevators_ShouldReturnAddedElevators()
+        {
+            var building = new Building(5);
+            building.AddElevator(new Elevator(1));
+            building.AddElevator(new Elevator(2));
+
+            var elevators = building.GetElevators();
+
+            elevators.Should().HaveCount(2);
+            elevators.Select(e => e.Id).Should().BeEquivalentTo(new[] { 1, 2 });
         }
 
         [Fact]

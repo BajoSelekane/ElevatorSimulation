@@ -8,6 +8,7 @@ using System.Linq;
 
 namespace ElevatorSimulation.Domain.Tests
 {
+    [Trait("Category", "Unit")]
     public class ElevatorTests
     {
         [Fact]
@@ -123,16 +124,83 @@ namespace ElevatorSimulation.Domain.Tests
         }
 
         [Fact]
-        public void OpenDoors_WhenMoving_ShouldThrowException()
+        public void OpenDoors_WhenOutOfService_ShouldThrowException()
         {
-            // Arrange
             var elevator = new Elevator(1);
-            elevator.MoveToFloor(5); // This simulates movement
+            elevator.SetOutOfService();
 
-            // Act & Assert
             Action act = () => elevator.OpenDoors();
             act.Should().Throw<InvalidOperationException>()
-                .WithMessage("Cannot open doors while elevator is moving.");
+                .WithMessage("Elevator is out of service.");
+        }
+
+        [Fact]
+        public void MoveToFloor_SameFloor_ShouldOpenDoors()
+        {
+            var elevator = new Elevator(1);
+
+            elevator.MoveToFloor(0);
+
+            elevator.CurrentFloor.Should().Be(0);
+            elevator.Status.Should().Be(ElevatorStatus.DoorsOpen);
+            elevator.TotalTrips.Should().Be(0);
+        }
+
+        [Fact]
+        public void MoveToFloor_Downward_ShouldUpdateDistance()
+        {
+            var elevator = new Elevator(1);
+            elevator.MoveToFloor(8);
+
+            elevator.MoveToFloor(3);
+
+            elevator.CurrentFloor.Should().Be(3);
+            elevator.TotalDistanceTraveled.Should().Be(13);
+            elevator.TotalTrips.Should().Be(2);
+            elevator.IsMoving.Should().BeFalse();
+            elevator.IsAvailable.Should().BeTrue();
+        }
+
+        [Fact]
+        public void IsPassengerLimitReached_ShouldReflectCapacity()
+        {
+            var elevator = new Elevator(1, maxPassengers: 1);
+
+            elevator.IsPassengerLimitReached().Should().BeFalse();
+            elevator.BoardPassenger(new Passenger(1, 0, 4));
+            elevator.IsPassengerLimitReached().Should().BeTrue();
+        }
+
+        [Fact]
+        public void MoveToNextDestination_EmptyQueue_ShouldThrow()
+        {
+            var elevator = new Elevator(1);
+
+            Action act = () => elevator.MoveToNextDestination();
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("No destinations in queue.");
+        }
+
+        [Fact]
+        public void MoveToNextDestination_ShouldAlightPassengersAtDestination()
+        {
+            var elevator = new Elevator(1);
+            var passenger = new Passenger(1, 0, 4);
+            elevator.BoardPassenger(passenger);
+
+            elevator.MoveToNextDestination();
+
+            elevator.CurrentFloor.Should().Be(4);
+            elevator.PassengerCount.Should().Be(0);
+        }
+
+        [Fact]
+        public void IsAvailable_WhenOutOfService_ShouldBeFalse()
+        {
+            var elevator = new Elevator(1);
+            elevator.SetOutOfService();
+
+            elevator.IsAvailable.Should().BeFalse();
         }
 
         [Fact]

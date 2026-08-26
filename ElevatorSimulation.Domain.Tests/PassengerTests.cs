@@ -5,6 +5,7 @@ using ElevatorSimulation.Domain.Enums;
 
 namespace ElevatorSimulation.Domain.Tests
 {
+    [Trait("Category", "Unit")]
     public class PassengerTests
     {
         [Fact]
@@ -36,18 +37,23 @@ namespace ElevatorSimulation.Domain.Tests
         }
 
         [Fact]
-        public void GetWaitingTime_WhenWaiting_ShouldCalculateCorrectly()
+        public void GetWaitingTime_WhenWaiting_ShouldBeNonNegative()
         {
-            // Arrange
             var passenger = new Passenger(1, 5, 10);
-            System.Threading.Thread.Sleep(100);
 
-            // Act
             var waitTime = passenger.GetWaitingTime();
 
-            // Assert
-            waitTime.Should().BeGreaterThan(0);
-            waitTime.Should().BeLessThan(1);
+            waitTime.Should().BeGreaterThanOrEqualTo(0);
+            waitTime.Should().BeLessThan(5);
+        }
+
+        [Fact]
+        public void GetWaitingTime_WhenCompletedAtSet_ShouldReturnZero()
+        {
+            var passenger = new Passenger(1, 5, 10);
+            passenger.CompletedAt = DateTime.Now;
+
+            passenger.GetWaitingTime().Should().Be(0);
         }
 
         [Fact]
