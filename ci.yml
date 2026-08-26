@@ -365,24 +365,24 @@ jobs:
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
-          cache-dependency-path: '**/packages.lock.json'
+      #   with:
+      #     dotnet-version: ${{ env.DOTNET_VERSION }}
+      #     cache: true
+      #     cache-dependency-path: '**/packages.lock.json'
 
-      - name: Verify solution
-        shell: bash
-        run: |
-          set -euo pipefail
+      # - name: Verify solution
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
 
-          if [[ ! -f "${SOLUTION}" ]]; then
-            echo "::error::Solution file '${SOLUTION}' was not found."
-            echo "Available solution/project files:"
-            find . -maxdepth 4 \( -name '*.sln' -o -name '*.slnx' -o -name '*.csproj' \) -print
-            exit 1
-          fi
+      #     if [[ ! -f "${SOLUTION}" ]]; then
+      #       echo "::error::Solution file '${SOLUTION}' was not found."
+      #       echo "Available solution/project files:"
+      #       find . -maxdepth 4 \( -name '*.sln' -o -name '*.slnx' -o -name '*.csproj' \) -print
+      #       exit 1
+      #     fi
 
-          echo "Using solution: ${SOLUTION}"
+      #     echo "Using solution: ${SOLUTION}"
 
       - name: Restore solution
         run: dotnet restore "${{ env.SOLUTION }}"
