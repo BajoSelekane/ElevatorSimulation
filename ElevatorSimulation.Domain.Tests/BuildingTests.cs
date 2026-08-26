@@ -27,7 +27,7 @@ namespace ElevatorSimulation.Domain.Tests
             // Act & Assert
             Action act = () => new Building(0);
             act.Should().Throw<ArgumentException>()
-                .WithMessage("Building must have at least 1 floor.");
+                .WithMessage("Building must have at least >= 1 floor.");
         }
 
         [Fact]
