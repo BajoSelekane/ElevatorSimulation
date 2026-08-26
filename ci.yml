@@ -20,7 +20,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
     
     - name: Cache NuGet packages
       uses: actions/cache@v3
@@ -31,19 +31,18 @@ jobs:
           ${{ runner.os }}-nuget-
     
     - name: Restore dependencies
-      run: dotnet restore ElevatorSimulation.sln
+      run: dotnet restore ElevatorSimulation.slnx
     
     - name: Build solution
-      run: dotnet build ElevatorSimulation.sln --configuration Release --no-restore
+      run: dotnet build ElevatorSimulation.slnx --configuration Release --no-restore
     
     - name: Run tests with coverage
       run: |
-        dotnet test ElevatorSimulation.sln \
+        dotnet test ElevatorSimulation.slnx \
           --configuration Release \
           --no-build \
           --verbosity normal \
           --collect:"XPlat Code Coverage" \
-          --settings coverlet.runsettings \
           --results-directory ./TestResults
     
     - name: Merge coverage reports
@@ -95,7 +94,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
     
     - name: Run static code analysis
       run: |
@@ -145,7 +144,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
     
     - name: Install SonarCloud scanners
       run: |
@@ -192,7 +191,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10 .0.x'
     
     - name: Run benchmarks
       run: |
@@ -221,7 +220,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '10.0.x'
     
     - name: Publish application
       run: |
