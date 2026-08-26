@@ -342,7 +342,7 @@ on:
       - 'feature/**'
   pull_request:
     branches:
-      - main
+      - master
       - develop
   workflow_dispatch:
 
