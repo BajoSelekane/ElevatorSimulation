@@ -21,7 +21,7 @@ jobs:
     
     - name: Run tests with coverage
       run: |
-        dotnet test ElevatorSimulation.sln \
+        dotnet test ElevatorSimulation.slnx \
           --configuration Release \
           --collect:"XPlat Code Coverage" \
           --settings coverlet.runsettings \
