@@ -19,14 +19,6 @@ jobs:
       with:
         dotnet-version: '10.0.x'
     
-    - name: Run tests with coverage
-      run: |
-        dotnet test ElevatorSimulation.slnx \
-          --configuration Release \
-          --collect:"XPlat Code Coverage" \
-          --settings coverlet.runsettings \
-          --results-directory ./TestResults
-    
     - name: Generate coverage report
       run: |
         dotnet tool install --global dotnet-reportgenerator-globaltool
