@@ -9,6 +9,8 @@ namespace ElevatorSimulation.Domain.Enums
         Standard,
         HighSpeed,
         Freight,
-        Glass
+        Glass,
+        Express,
+        Service
     }
 }

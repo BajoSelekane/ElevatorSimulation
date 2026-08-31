@@ -1,0 +1,54 @@
+name: Update Coverage Badge
+
+on:
+  push:
+    branches: [ master, Elevator-Features/* ]
+  workflow_dispatch:
+
+jobs:
+  update-badge:
+    name: Update Coverage Badge
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+    
+    - name: Run tests with coverage
+      run: |
+        dotnet test ElevatorSimulation.slnx \
+          --configuration Release \
+          --collect:"XPlat Code Coverage" \
+          --settings coverlet.runsettings \
+          --results-directory ./TestResults
+    
+    - name: Generate coverage report
+      run: |
+        dotnet tool install --global dotnet-reportgenerator-globaltool
+        reportgenerator \
+          -reports:./TestResults/**/coverage.cobertura.xml \
+          -targetdir:./CoverageReport \
+          -reporttypes:HtmlInline_AzurePipelines;Cobertura
+    
+    - name: Extract coverage percentage
+      id: coverage
+      run: |
+        COVERAGE=$(grep -oP 'LineRate="\K[0-9.]+' ./CoverageReport/Cobertura.xml | head -1)
+        COVERAGE_PERCENT=$(echo "$COVERAGE * 100" | bc | cut -d. -f1)
+        echo "coverage=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
+    
+    - name: Generate coverage badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{ secrets.GIST_SECRET }}
+        gistID: ${{ secrets.GIST_ID }}
+        filename: coverage-badge.json
+        label: Coverage
+        message: ${{ steps.coverage.outputs.coverage }}%
+        color: ${{ steps.coverage.outputs.coverage >= 90 && 'green' || 'yellow' }}
+        namedLogo: xunit
