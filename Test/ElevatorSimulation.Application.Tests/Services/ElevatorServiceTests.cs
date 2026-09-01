@@ -169,6 +169,8 @@ namespace ElevatorSimulation.Application.Tests.Services
 
         #region GetAllElevators Tests
 
+
+
         [Fact]
         [Trait("Category", "GetAll")]
         public void GetAllElevators_ShouldReturnAllElevators()
@@ -235,6 +237,8 @@ namespace ElevatorSimulation.Application.Tests.Services
             Assert.Equal(3, result.Elevators.Count);
             Assert.True(result.AverageWaitTime > 0);
         }
+
+
 
         [Fact]
         [Trait("Category", "GetStatus")]

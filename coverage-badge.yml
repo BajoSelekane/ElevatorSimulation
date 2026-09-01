@@ -29,18 +29,42 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          dotnet tool install --global dotnet-reportgenerator-globaltool
+          dotnet tool install --global dotnet-reportgenerator-globaltool >/dev/null
           reportgenerator \
             -reports:./TestResults/**/coverage.cobertura.xml \
             -targetdir:./CoverageReport \
-            -reporttypes:HtmlInline_AzurePipelines;Cobertura
+            "-reporttypes:HtmlInline_AzurePipelines;Cobertura"
 
       - name: Extract coverage percentage
         id: coverage
         run: |
-          COVERAGE=$(grep -oP 'LineRate="\K[0-9.]+' ./CoverageReport/Cobertura.xml | head -1)
-          COVERAGE_PERCENT=$(echo "$COVERAGE * 100" | bc | cut -d. -f1)
+          set -e
+
+          COVERAGE_FILE=./CoverageReport/Cobertura.xml
+          if [ ! -f "$COVERAGE_FILE" ]; then
+            echo "Cobertura report not found at $COVERAGE_FILE"
+            echo "coverage=0" >> $GITHUB_OUTPUT
+            echo "coverage_color=red" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Extract LineRate (decimal between 0 and 1)
+          COVERAGE=$(grep -oP 'LineRate="\K[0-9.]+' "$COVERAGE_FILE" | head -1 || echo "0")
+          # Ensure numeric value for bc
+          COVERAGE=${COVERAGE:-0}
+          # Convert to percentage (rounded)
+          COVERAGE_PERCENT=$(echo "scale=2; $COVERAGE * 100" | bc -l | awk '{printf("%d", $0 + 0.5)}')
+
+          # Determine badge color
+          COLOR=yellow
+          if [ "$COVERAGE_PERCENT" -ge 90 ]; then
+            COLOR=green
+          elif [ "$COVERAGE_PERCENT" -lt 50 ]; then
+            COLOR=red
+          fi
+
           echo "coverage=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
+          echo "coverage_color=$COLOR" >> $GITHUB_OUTPUT
 
       - name: Generate coverage badge
         uses: schneegans/dynamic-badges-action@v1.7.0
@@ -50,5 +74,5 @@ jobs:
           filename: coverage-badge.json
           label: Coverage
           message: ${{ steps.coverage.outputs.coverage }}%
-          color: ${{ steps.coverage.outputs.coverage >= 90 && 'green' || 'yellow' }}
+          color: ${{ steps.coverage.outputs.coverage_color }}
           namedLogo: xunit

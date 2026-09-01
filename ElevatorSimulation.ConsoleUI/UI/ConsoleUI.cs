@@ -41,7 +41,7 @@ namespace ElevatorSimulation.ConsoleApp.UI
 
         private async Task DisplayMainMenuAsync()
         {
-            Console.Clear();
+            try { Console.Clear(); } catch { }
             _logger.Info("========================================");
             _logger.Info("           MAIN MENU                    ");
             _logger.Info("========================================");
@@ -93,13 +93,13 @@ namespace ElevatorSimulation.ConsoleApp.UI
         {
             try
             {
-                Console.Clear();
+                try { Console.Clear(); } catch { }
                 _logger.Info("========================================");
                 _logger.Info("          CALL ELEVATOR                ");
                 _logger.Info("========================================");
                 _logger.Info("");
 
-                var floorNumber = GetValidatedFloorInput("Enter floor number to call elevator: ");
+                var floorNumber = await GetValidatedFloorInput("Enter floor number to call elevator: ");
                 if (floorNumber == null) return;
 
                 var passengerCount = GetValidatedPassengerCount();
@@ -207,7 +207,7 @@ namespace ElevatorSimulation.ConsoleApp.UI
 
         private async Task HandleViewElevatorStatusAsync()
         {
-            Console.Clear();
+            try { Console.Clear(); } catch { }
             _logger.LogInfo("========================================");
             _logger.LogInfo("      ELEVATOR STATUS                   ");
             _logger.LogInfo("========================================");
@@ -228,16 +228,16 @@ namespace ElevatorSimulation.ConsoleApp.UI
 
         private async Task HandleAddPassengerAsync()
         {
-            Console.Clear();
+            try { Console.Clear(); } catch { }
             _logger.Info("========================================");
             _logger.Info("       ADD PASSENGER                   ");
             _logger.Info("========================================");
             _logger.Info("");
 
-            var floorNumber = GetValidatedFloorInput("Enter current floor of passenger: ");
+            var floorNumber = await GetValidatedFloorInput("Enter current floor of passenger: ");
             if (floorNumber == null) return;
 
-            var destinationFloor = GetValidatedFloorInput("Enter destination floor: ");
+            var destinationFloor = await GetValidatedFloorInput("Enter destination floor: ");
             if (destinationFloor == null || destinationFloor == floorNumber)
             {
                 _logger.Error("Destination floor must be different from current floor.");
@@ -262,27 +262,41 @@ namespace ElevatorSimulation.ConsoleApp.UI
             Console.ReadKey();
         }
 
-        private int? GetValidatedFloorInput(string prompt)
+        private async Task<int?> GetValidatedFloorInput(string prompt)
         {
-            while (true)
+            const int maxAttempts = 3;
+            for (int i = 0; i < maxAttempts; i++)
             {
                 Console.Write(prompt);
-                var input = Console.ReadLine();
+                var input = await Console.In.ReadLineAsync();
 
-                if (string.IsNullOrWhiteSpace(input))
+                if (input == null) // EOF / no input
                 {
-                    _logger.Error("Input cannot be empty.");
-                    continue;
+                    _logger.LogError("No input available.");
+                    return null;
                 }
 
-                if (input.ToLower() == "menu")
-                    return null;
-
-                if (int.TryParse(input, out int floor) && floor >= 0 && floor <= 10)
+                if (int.TryParse(input, out int floor) && IsValidFloor(floor))
                     return floor;
 
-                _logger.Error($"❌ Invalid floor. Please enter a number between 0 and 10.");
-                _logger.Info("💡 Type 'menu' to cancel.");
+                _logger.LogError("Invalid floor. Please try again.");
+            }
+            return null;
+        }
+
+
+        private bool IsValidFloor(int floor)
+        {
+            try
+            {
+                var buildingStatus = _elevatorService.GetBuildingStatus();
+                var maxFloor = buildingStatus?.FloorCount ?? 0;
+                return floor >= 0 && floor <= maxFloor;
+            }
+            catch
+            {
+                // If we cannot determine building info, accept 0+ floors as valid
+                return floor >= 0;
             }
         }
 
@@ -308,7 +322,7 @@ namespace ElevatorSimulation.ConsoleApp.UI
 
         private async Task HandleViewBuildingStatusAsync()
         {
-            Console.Clear();
+            try { Console.Clear(); } catch { }
             _logger.Info("========================================");
             _logger.Info("    BUILDING STATUS (ASCII VIEW)       ");
             _logger.Info("========================================");
@@ -356,7 +370,7 @@ namespace ElevatorSimulation.ConsoleApp.UI
 
         private async Task HandleSettingsAsync()
         {
-            Console.Clear();
+            try { Console.Clear(); } catch { }
             _logger.Info("========================================");
             _logger.Info("          SETTINGS                      ");
             _logger.Info("========================================");
