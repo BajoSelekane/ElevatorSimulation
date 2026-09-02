@@ -2,7 +2,7 @@ name: Update Coverage Badge
 
 on:
   push:
-    branches: [ master, Elevator-Features/* ]
+    branches: [ master ]
     paths-ignore:
       - '**.md'
       - '**.txt'
@@ -20,7 +20,7 @@ jobs:
   update-badge:
     name: Update Coverage Badge
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
