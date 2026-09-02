@@ -2,7 +2,7 @@ name: Update Coverage Badge
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
     paths-ignore:
       - '**.md'
       - '**.txt'
