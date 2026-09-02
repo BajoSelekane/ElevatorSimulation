@@ -10,7 +10,8 @@ namespace ElevatorSimulation.Infrastructure.Logging
         void LogWarning(string message);
         void LogError(string message);
         void LogDebug(string message);
-        void LogException(Exception ex, string context = null);
+        void LogException(Exception ex, string? context = null);
+        void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter);
     }
 
     // Backwards-compatible console-specific logger interface
@@ -22,7 +23,7 @@ namespace ElevatorSimulation.Infrastructure.Logging
         private bool _disposed;
 
         // Accepts null or empty and falls back to Console.Out
-        public ConsoleLogger(string logFilePath = null)
+        public ConsoleLogger(string? logFilePath = null)
         {
             if (string.IsNullOrWhiteSpace(logFilePath))
             {
@@ -72,7 +73,7 @@ namespace ElevatorSimulation.Infrastructure.Logging
             LogWithColor(message, ConsoleColor.Cyan, "DEBUG");
         }
 
-        public void LogException(Exception ex, string context = null)
+        public void LogException(Exception ex, string? context = null)
         {
             var message = $"Exception: {ex.Message}";
             if (!string.IsNullOrEmpty(context))
@@ -110,6 +111,11 @@ namespace ElevatorSimulation.Infrastructure.Logging
             GC.SuppressFinalize(this);
         }
 
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            throw new NotImplementedException();
+        }
+
         ~ConsoleLogger()
         {
             Dispose();
@@ -123,7 +129,12 @@ namespace ElevatorSimulation.Infrastructure.Logging
         public void LogWarning(string message) { }
         public void LogError(string message) { }
         public void LogDebug(string message) { }
-        public void LogException(Exception ex, string context = null) { }
+        public void LogException(Exception ex, string? context = null) { }
+
+        void ILogger.Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public static class LoggerExtensions

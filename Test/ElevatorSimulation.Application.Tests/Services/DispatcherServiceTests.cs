@@ -30,7 +30,7 @@ namespace ElevatorSimulation.Application.Tests.Services
         {
             _mockBuilding = new Mock<IBuilding>();
             _mockLogger = new Mock<ILogger>();
-            _elevators = new List<IElevator>();
+            _elevators = [];
 
             var e1 = new Elevator(1);
             e1.MoveToFloor(5);
@@ -173,7 +173,7 @@ namespace ElevatorSimulation.Application.Tests.Services
         public void DispatchElevator_NoElevatorsAvailable_ShouldQueueRequest()
         {
             // Arrange
-            _mockBuilding.Setup(b => b.GetElevators()).Returns(new List<IElevator>());
+            _mockBuilding.Setup(b => b.GetElevators()).Returns([]);
             var request = new FloorRequestDto { FloorNumber = 3, PassengerCount = 1 };
 
             // Act
@@ -195,7 +195,7 @@ namespace ElevatorSimulation.Application.Tests.Services
         {
             // Arrange
             var elevator = _elevators[0] as Elevator;
-            var passenger = new Passenger(1, 0, 5);
+            Passenger passenger = new(1, 0, 5);
             for (int i = 0; i < elevator.MaxPassengers; i++)
             {
                 elevator.BoardPassenger(new Passenger(i + 1, 0, i + 2));
@@ -292,7 +292,7 @@ namespace ElevatorSimulation.Application.Tests.Services
         public void AssignPassengerToElevator_NoSuitableElevator_ShouldReturnFailure()
         {
             // Arrange
-            _mockBuilding.Setup(b => b.GetElevators()).Returns(new List<IElevator>());
+            _mockBuilding.Setup(b => b.GetElevators()).Returns([]);
 
             var request = new PassengerRequestDto
             {
@@ -359,7 +359,7 @@ namespace ElevatorSimulation.Application.Tests.Services
         public void GetNearestAvailableElevator_NoElevators_ShouldReturnNull()
         {
             // Arrange
-            _mockBuilding.Setup(b => b.GetElevators()).Returns(new List<IElevator>());
+            _mockBuilding.Setup(b => b.GetElevators()).Returns([]);
 
             // Act
             var result = _dispatcher.GetNearestAvailableElevator(3);
@@ -475,7 +475,7 @@ namespace ElevatorSimulation.Application.Tests.Services
             _mockBuilding.Setup(b => b.GetElevator(1)).Returns(elevator);
 
             // Create a pending request
-            _mockBuilding.Setup(b => b.GetElevators()).Returns(new List<IElevator>());
+            _mockBuilding.Setup(b => b.GetElevators()).Returns([]);
             var request = new FloorRequestDto { FloorNumber = 3, PassengerCount = 1 };
             _dispatcher.DispatchElevator(request);
 
@@ -527,7 +527,7 @@ namespace ElevatorSimulation.Application.Tests.Services
         public void CalculateEstimatedWaitTime_NoElevators_ShouldReturnDefault()
         {
             // Arrange
-            _mockBuilding.Setup(b => b.GetElevators()).Returns(new List<IElevator>());
+            _mockBuilding.Setup(b => b.GetElevators()).Returns([]);
 
             // Act
             var waitTime = _dispatcher.CalculateEstimatedWaitTime(3);
@@ -663,7 +663,7 @@ namespace ElevatorSimulation.Application.Tests.Services
         public void GetDispatchStatistics_WithFailures_ShouldCalculateEfficiency()
         {
             // Arrange
-            _mockBuilding.Setup(b => b.GetElevators()).Returns(new List<IElevator>());
+            _mockBuilding.Setup(b => b.GetElevators()).Returns([]);
             var request = new FloorRequestDto { FloorNumber = 3, PassengerCount = 1 };
             _dispatcher.DispatchElevator(request);
 
@@ -689,7 +689,7 @@ namespace ElevatorSimulation.Application.Tests.Services
             var method = typeof(DispatcherService).GetMethod("GetNearestAvailableElevatorInternal",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-            var result = method.Invoke(_dispatcher, new object[] { 3 }) as IElevator;
+            var result = method.Invoke(_dispatcher, [3]) as IElevator;
 
             // Assert
             Assert.NotNull(result);
@@ -705,10 +705,10 @@ namespace ElevatorSimulation.Application.Tests.Services
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
             var elevator = _elevators[0];
-            bool result1 = (bool)method.Invoke(_dispatcher, new object[] { elevator, 5 });
+            bool result1 = (bool)method.Invoke(_dispatcher, [elevator, 5]);
 
             elevator.SetOutOfService();
-            var result2 = (bool)method.Invoke(_dispatcher, new object[] { elevator, 5 });
+            var result2 = (bool)method.Invoke(_dispatcher, [elevator, 5]);
 
             // Assert
             Assert.True(result1);
@@ -731,7 +731,7 @@ namespace ElevatorSimulation.Application.Tests.Services
                 Weight = 70
             };
 
-            var result = method.Invoke(_dispatcher, new object[] { request }) as IElevator;
+            var result = method.Invoke(_dispatcher, [request]) as IElevator;
 
             // Assert
             Assert.NotNull(result);
@@ -747,7 +747,7 @@ namespace ElevatorSimulation.Application.Tests.Services
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
             var elevator = _elevators[0];
-            method.Invoke(_dispatcher, new object[] { elevator, 5 });
+            method.Invoke(_dispatcher, [elevator, 5]);
 
             // Assert
             Assert.Equal(5, elevator.CurrentFloor);
@@ -766,7 +766,7 @@ namespace ElevatorSimulation.Application.Tests.Services
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
             var request = new FloorRequestDto { FloorNumber = 3, PassengerCount = 1 };
-            var result = (int)method.Invoke(_dispatcher, new object[] { request });
+            var result = (int)method.Invoke(_dispatcher, [request]);
 
             // Assert
             Assert.Equal(5, result);
@@ -783,7 +783,7 @@ namespace ElevatorSimulation.Application.Tests.Services
             var elevator = _elevators[0];
             elevator.MoveToFloor(5);
 
-            var result = (int)method.Invoke(_dispatcher, new object[] { elevator, 8 });
+            var result = (int)method.Invoke(_dispatcher, [elevator, 8]);
 
             // Assert
             // Distance 3 * 2 = 6 + 3 = 9
@@ -792,7 +792,7 @@ namespace ElevatorSimulation.Application.Tests.Services
 
         #endregion
 
-        public void Dispose()
+        void IDisposable.Dispose()
         {
             _mockBuilding.Reset();
             _mockLogger.Reset();

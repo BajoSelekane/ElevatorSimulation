@@ -57,6 +57,6 @@ namespace ElevatorSimulation.Infrastructure.Logging
         public void LogWarning(string message) => _logger.LogWarning(message);
         public void LogError(string message) => _logger.LogError(message);
         public void LogDebug(string message) => _logger.LogDebug(message);
-        public void LogException(Exception ex, string context = null) => _logger.LogException(ex, context);
+        public void LogException(Exception ex, string? context = null) => _logger.LogException(ex, context);
     }
 }
