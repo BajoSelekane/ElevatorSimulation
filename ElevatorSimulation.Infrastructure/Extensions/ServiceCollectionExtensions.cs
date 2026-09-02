@@ -14,7 +14,7 @@ namespace ElevatorSimulation.Infrastructure.Extensions
     public static class ServiceCollectionExtensions
     {
         public static IServiceCollection AddElevatorSimulation(this IServiceCollection services,
-            IConfiguration configuration = null)
+            IConfiguration? configuration = null)
         {
             // Configuration
             var settings = new AppSettings();

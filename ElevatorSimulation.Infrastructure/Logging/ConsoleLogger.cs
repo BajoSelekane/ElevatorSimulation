@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.IO;
 
 namespace ElevatorSimulation.Infrastructure.Logging
@@ -11,30 +10,41 @@ namespace ElevatorSimulation.Infrastructure.Logging
         void LogWarning(string message);
         void LogError(string message);
         void LogDebug(string message);
-        void LogException(Exception ex, string context = null);
+        void LogException(Exception ex, string? context = null);
+        void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter);
     }
 
     // Backwards-compatible console-specific logger interface
     public interface IConsoleLogger : ILogger { }
 
-    public class ConsoleLogger : ILogger, IConsoleLogger
+    public sealed class ConsoleLogger : ILogger, IConsoleLogger, IDisposable
     {
-        private readonly string _logFilePath;
-        private readonly ConcurrentQueue<string> _logQueue;
-        private readonly object _lockObject = new object();
-        private bool _isDisposed;
+        private readonly TextWriter _writer;
+        private bool _disposed;
 
-        public ConsoleLogger(string logFilePath = null)
+        // Accepts null or empty and falls back to Console.Out
+        public ConsoleLogger(string? logFilePath = null)
         {
-            _logFilePath = logFilePath ?? "elevator_simulation.log";
-            _logQueue = new ConcurrentQueue<string>();
-            _isDisposed = false;
-
-            // Ensure log directory exists
-            var directory = Path.GetDirectoryName(_logFilePath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            if (string.IsNullOrWhiteSpace(logFilePath))
             {
-                Directory.CreateDirectory(directory);
+                _writer = Console.Out;
+                return;
+            }
+
+            try
+            {
+                // Ensure directory exists for file path
+                var directory = Path.GetDirectoryName(logFilePath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
+
+                var stream = new FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
+                _writer = new StreamWriter(stream) { AutoFlush = true };
+            }
+            catch
+            {
+                // On any failure, fall back to console output
+                _writer = Console.Out;
             }
         }
 
@@ -63,7 +73,7 @@ namespace ElevatorSimulation.Infrastructure.Logging
             LogWithColor(message, ConsoleColor.Cyan, "DEBUG");
         }
 
-        public void LogException(Exception ex, string context = null)
+        public void LogException(Exception ex, string? context = null)
         {
             var message = $"Exception: {ex.Message}";
             if (!string.IsNullOrEmpty(context))
@@ -80,59 +90,30 @@ namespace ElevatorSimulation.Infrastructure.Logging
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
             var formattedMessage = $"[{timestamp}] [{level}] {message}";
 
-            lock (_lockObject)
-            {
-                var originalColor = Console.ForegroundColor;
-                Console.ForegroundColor = color;
-                Console.WriteLine(formattedMessage);
-                Console.ForegroundColor = originalColor;
-            }
+            var originalColor = Console.ForegroundColor;
+            Console.ForegroundColor = color;
+            Console.WriteLine(formattedMessage);
+            Console.ForegroundColor = originalColor;
 
-            // Write to file asynchronously
-            _logQueue.Enqueue(formattedMessage);
-            if (_logQueue.Count >= 10)
-            {
-                FlushLogsToFile();
-            }
-        }
-
-        private void FlushLogsToFile()
-        {
-            if (string.IsNullOrEmpty(_logFilePath))
-                return;
-
-            try
-            {
-                lock (_lockObject)
-                {
-                    var entries = new List<string>();
-                    while (_logQueue.TryDequeue(out var entry))
-                    {
-                        entries.Add(entry);
-                    }
-
-                    if (entries.Any())
-                    {
-                        File.AppendAllLines(_logFilePath, entries);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[ERROR] Failed to write to log file: {ex.Message}");
-                Console.ResetColor();
-            }
+            _writer.WriteLine(formattedMessage);
         }
 
         public void Dispose()
         {
-            if (_isDisposed)
+            if (_disposed)
                 return;
 
-            FlushLogsToFile();
-            _isDisposed = true;
+            if (!ReferenceEquals(_writer, Console.Out))
+            {
+                _writer.Dispose();
+            }
+            _disposed = true;
             GC.SuppressFinalize(this);
+        }
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            throw new NotImplementedException();
         }
 
         ~ConsoleLogger()
@@ -148,7 +129,12 @@ namespace ElevatorSimulation.Infrastructure.Logging
         public void LogWarning(string message) { }
         public void LogError(string message) { }
         public void LogDebug(string message) { }
-        public void LogException(Exception ex, string context = null) { }
+        public void LogException(Exception ex, string? context = null) { }
+
+        void ILogger.Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public static class LoggerExtensions
