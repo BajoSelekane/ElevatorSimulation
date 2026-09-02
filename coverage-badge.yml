@@ -2,13 +2,25 @@ name: Update Coverage Badge
 
 on:
   push:
-    branches: [ master, Elevator-Features/* ]
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'README*'
   workflow_dispatch:
+
+# Cancel any in-progress runs on the same branch when a new commit is pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   update-badge:
     name: Update Coverage Badge
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -19,54 +31,95 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.sln', '**/Directory.Packages.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Cache ReportGenerator tool
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-reportgenerator
+          restore-keys: |
+            ${{ runner.os }}-dotnet-tools-
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
       - name: Run tests with coverage
         run: |
           dotnet test \
             --configuration Release \
+            --no-build \
             --collect:"XPlat Code Coverage" \
             --logger "console;verbosity=detailed" \
             --results-directory ./TestResults
 
+      - name: Install ReportGenerator (if not cached)
+        run: |
+          if ! command -v reportgenerator &> /dev/null; then
+            dotnet tool install --global dotnet-reportgenerator-globaltool
+          fi
+
       - name: Generate coverage report
         run: |
-          dotnet tool install --global dotnet-reportgenerator-globaltool >/dev/null
           reportgenerator \
             -reports:./TestResults/**/coverage.cobertura.xml \
             -targetdir:./CoverageReport \
-            "-reporttypes:HtmlInline_AzurePipelines;Cobertura"
+            -reporttypes:HtmlInline_AzurePipelines;Cobertura
 
       - name: Extract coverage percentage
         id: coverage
         run: |
-          set -e
-
-          COVERAGE_FILE=./CoverageReport/Cobertura.xml
+          set -euo pipefail
+          COVERAGE_FILE="./CoverageReport/Cobertura.xml"
+          
           if [ ! -f "$COVERAGE_FILE" ]; then
-            echo "Cobertura report not found at $COVERAGE_FILE"
-            echo "coverage=0" >> $GITHUB_OUTPUT
-            echo "coverage_color=red" >> $GITHUB_OUTPUT
-            exit 0
+            echo "Error: Coverage file not found at $COVERAGE_FILE"
+            exit 1
           fi
+          
+          # Use Python for robust XML parsing instead of fragile grep/bc
+          COVERAGE_PERCENT=$(python3 -c "
+          import xml.etree.ElementTree as ET
+          import sys
+          try:
+              root = ET.parse('$COVERAGE_FILE').getroot()
+              rate = root.get('line-rate') or root.get('lineRate') or '0'
+              print(int(float(rate) * 100))
+          except Exception as e:
+              print(f'Error parsing coverage: {e}', file=sys.stderr)
+              sys.exit(1)
+          ")
+          
+          echo "coverage=$COVERAGE_PERCENT" >> "$GITHUB_OUTPUT"
+          echo "Extracted coverage: $COVERAGE_PERCENT%"
 
-          # Extract LineRate (decimal between 0 and 1)
-          COVERAGE=$(grep -oP 'LineRate="\K[0-9.]+' "$COVERAGE_FILE" | head -1 || echo "0")
-          # Ensure numeric value for bc
-          COVERAGE=${COVERAGE:-0}
-          # Convert to percentage (rounded)
-          COVERAGE_PERCENT=$(echo "scale=2; $COVERAGE * 100" | bc -l | awk '{printf("%d", $0 + 0.5)}')
-
-          # Determine badge color
-          COLOR=yellow
-          if [ "$COVERAGE_PERCENT" -ge 90 ]; then
-            COLOR=green
-          elif [ "$COVERAGE_PERCENT" -lt 50 ]; then
-            COLOR=red
+      - name: Determine badge color
+        id: badge
+        run: |
+          COVERAGE=${{ steps.coverage.outputs.coverage }}
+          if [ "$COVERAGE" -ge 90 ]; then
+            COLOR="brightgreen"
+          elif [ "$COVERAGE" -ge 75 ]; then
+            COLOR="green"
+          elif [ "$COVERAGE" -ge 50 ]; then
+            COLOR="yellow"
+          else
+            COLOR="red"
           fi
+          echo "color=$COLOR" >> "$GITHUB_OUTPUT"
 
-          echo "coverage=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
-          echo "coverage_color=$COLOR" >> $GITHUB_OUTPUT
-
+      # Only update the public badge on master to prevent feature branches from overwriting it
       - name: Generate coverage badge
+        if: github.ref == 'refs/heads/master'
         uses: schneegans/dynamic-badges-action@v1.7.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
@@ -74,5 +127,86 @@ jobs:
           filename: coverage-badge.json
           label: Coverage
           message: ${{ steps.coverage.outputs.coverage }}%
-          color: ${{ steps.coverage.outputs.coverage_color }}
+          color: ${{ steps.badge.outputs.color }}
           namedLogo: xunit
+
+
+
+# name: Update Coverage Badge
+
+# on:
+#   push:
+#     branches: [ master, finalising-merge/* ]
+#   workflow_dispatch:
+
+# jobs:
+#   update-badge:
+#     name: Update Coverage Badge
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Setup .NET
+#         uses: actions/setup-dotnet@v4
+#         with:
+#           dotnet-version: '10.0.x'
+
+#       - name: Run tests with coverage
+#         run: |
+#           dotnet test \
+#             --configuration Release \
+#             --collect:"XPlat Code Coverage" \
+#             --logger "console;verbosity=detailed" \
+#             --results-directory ./TestResults
+
+#       - name: Generate coverage report
+#         run: |
+#           dotnet tool install --global dotnet-reportgenerator-globaltool >/dev/null
+#           reportgenerator \
+#             -reports:./TestResults/**/coverage.cobertura.xml \
+#             -targetdir:./CoverageReport \
+#             "-reporttypes:HtmlInline_AzurePipelines;Cobertura"
+
+#       - name: Extract coverage percentage
+#         id: coverage
+#         run: |
+#           set -e
+
+#           COVERAGE_FILE=./CoverageReport/Cobertura.xml
+#           if [ ! -f "$COVERAGE_FILE" ]; then
+#             echo "Cobertura report not found at $COVERAGE_FILE"
+#             echo "coverage=0" >> $GITHUB_OUTPUT
+#             echo "coverage_color=red" >> $GITHUB_OUTPUT
+#             exit 0
+#           fi
+
+#           # Extract LineRate (decimal between 0 and 1)
+#           COVERAGE=$(grep -oP 'LineRate="\K[0-9.]+' "$COVERAGE_FILE" | head -1 || echo "0")
+#           # Ensure numeric value for bc
+#           COVERAGE=${COVERAGE:-0}
+#           # Convert to percentage (rounded)
+#           COVERAGE_PERCENT=$(echo "scale=2; $COVERAGE * 100" | bc -l | awk '{printf("%d", $0 + 0.5)}')
+
+#           # Determine badge color
+#           COLOR=yellow
+#           if [ "$COVERAGE_PERCENT" -ge 90 ]; then
+#             COLOR=green
+#           elif [ "$COVERAGE_PERCENT" -lt 50 ]; then
+#             COLOR=red
+#           fi
+
+#           echo "coverage=$COVERAGE_PERCENT" >> $GITHUB_OUTPUT
+#           echo "coverage_color=$COLOR" >> $GITHUB_OUTPUT
+
+#       - name: Generate coverage badge
+#         uses: schneegans/dynamic-badges-action@v1.7.0
+#         with:
+#           auth: ${{ secrets.GIST_SECRET }}
+#           gistID: ${{ secrets.GIST_ID }}
+#           filename: coverage-badge.json
+#           label: Coverage
+#           message: ${{ steps.coverage.outputs.coverage }}%
+#           color: ${{ steps.coverage.outputs.coverage_color }}
+#           namedLogo: xunit
