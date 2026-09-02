@@ -270,9 +270,9 @@ namespace ElevatorSimulation.ConsoleApp.UI
                 Console.Write(prompt);
                 var input = await Console.In.ReadLineAsync();
 
-                if (input == null) // EOF / no input
+                if (input == null) // EOF — stream closed
                 {
-                    _logger.LogError("No input available.");
+                    _logger.LogError("Input stream closed unexpectedly.");
                     return null;
                 }
 
@@ -281,6 +281,8 @@ namespace ElevatorSimulation.ConsoleApp.UI
 
                 _logger.LogError("Invalid floor. Please try again.");
             }
+
+            _logger.LogError("Maximum input attempts exceeded.");
             return null;
         }
 
